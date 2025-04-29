@@ -1,42 +1,56 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>UPI Deep Link Button</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UPI Deep Link</title>
   <style>
-    /* Simple styling for the button */
-    #upiPayBtn {
-      display: inline-block;
-      padding: 12px 24px;
-      font-size: 1rem;
-      color: #fff;
-      background-color: #4CAF50;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
+    body {
+      display: flex;
+      height: 100vh;
+      margin: 0;
+      align-items: center;
+      justify-content: center;
+      background: #f4f4f4;
+      font-family: sans-serif;
     }
-    #upiPayBtn:hover {
-      opacity: 0.9;
+    .btn {
+      display: inline-block;
+      padding: 16px 32px;
+      font-size: 1rem;
+      color: #ffffff;
+      background-color: #1abc9c;
+      border: none;
+      border-radius: 8px;
+      text-decoration: none;
+      text-align: center;
+    }
+    .btn:active {
+      transform: scale(0.98);
     }
   </style>
 </head>
 <body>
 
-  <button id="upiPayBtn">Pay via UPI</button>
+  <!-- The UPI deep‐link anchor -->
+  <a
+    class="btn"
+    href="upi://pay?pa=adinarayanaraghu95@okaxis&pn=Adinarayana%20Raghu&cu=INR"
+  >
+    Pay via UPI
+  </a>
 
   <script>
-    // Construct the UPI deep link
-    const upiDeepLink = [
-      'upi://pay',
-      '?pa=adinarayanaraghu95@okaxis',    // payee VPA
-      '&pn=Adinarayana%20Raghu',          // payee name (URL-encoded space)
-      '&cu=INR'                          // currency
-    ].join('');
+    // Optional: if you want to detect failures (no handler), you could set a timeout
+    const upiLink = document.querySelector('.btn');
+    upiLink.addEventListener('click', () => {
+      // Start a timer; if after 2s the page hasn't left, assume no UPI app
+      const fallback = setTimeout(() => {
+        alert('No UPI app detected. Please install one like Google Pay, PhonePe, or BHIM.');
+      }, 2000);
 
-    document.getElementById('upiPayBtn').addEventListener('click', () => {
-      // Attempt to open the UPI app
-      window.location.href = upiDeepLink;
+      // If the navigation succeeds, the browser will switch away and never clear this
+      window.addEventListener('pagehide', () => clearTimeout(fallback));
     });
   </script>
 
