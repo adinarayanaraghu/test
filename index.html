@@ -2,80 +2,83 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>UPI Scanner & Payment</title>
-  <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scan UPI QR</title>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js" defer></script>
   <style>
-    body { margin: 0; font-family: Arial, sans-serif; background: #f2f2f2; color: #111; }
-    .container { padding: 1rem; max-width: 400px; margin: 0 auto; }
+    :root { --primary: #4F46E5; --bg: #FFF; --text: #111; --muted: #666; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: var(--text); background: var(--bg); }
+    .container { display: flex; flex-direction: column; min-height: 100%; width: 100%; max-width: 480px; margin: 0 auto; padding: 1rem; }
+    h1 { font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; text-align: center; }
+    .video-wrapper { position: relative; width: 100%; padding-top: 100%; border-radius: 8px; overflow: hidden; }
+    video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+    .scan-line { position: absolute; width: 100%; height: 2px; background: var(--primary); animation: scan 2s infinite; }
+    @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
+    .field { margin-top: 1rem; }
+    .field label { display: block; font-size: 0.875rem; margin-bottom: 0.25rem; }
+    .value { font-size: 1rem; padding: 0.5rem; background: #F3F4F6; border-radius: 6px; word-break: break-word; }
+    input { width: 100%; padding: 0.75rem; font-size: 1rem; border: 1px solid #E5E7EB; border-radius: 6px; }
+    button { margin-top: 1rem; width: 100%; padding: 0.75rem; font-size: 1rem; color: #FFF; background: var(--primary); border: none; border-radius: 6px; }
+    button:disabled { background: #E5E7EB; color: var(--muted); cursor: not-allowed; }
+    .buttons { margin-top: 1rem; display: flex; gap: 0.5rem; }
+    .buttons button { flex: 1; }
     .hidden { display: none !important; }
-    #videoContainer { position: relative; width: 100%; padding-top: 75%; margin-bottom: 1rem; }
-    #video, #canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
-    #scanLine { position: absolute; width: 100%; height: 2px; background: rgba(255,0,0,0.8); animation: scanAnim 2s infinite; }
-    @keyframes scanAnim { 0% { top: 0%; } 100% { top: 100%; } }
-    label { font-weight: bold; margin-top: 1rem; display: block; }
-    input, button { width: 100%; padding: 0.75rem; font-size: 1rem; margin-top: 0.25rem; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
-    button { background: #6366f1; color: #fff; border: none; cursor: pointer; }
-    button:disabled { background: #e5e7eb; color: #888; cursor: not-allowed; }
-    #payButtons a { display: block; margin: 0.5rem 0; text-decoration: none; }
-    #payButtons button { width: 100%; }
   </style>
 </head>
 <body>
   <!-- Scanner View -->
   <div id="scannerApp" class="container">
-    <h2>UPI QR Scanner & Share</h2>
-    <div id="videoContainer">
+    <h1>Scan UPI QR</h1>
+    <div class="video-wrapper">
       <video id="video" autoplay muted playsinline></video>
-      <div id="scanLine"></div>
+      <div id="scanLine" class="scan-line"></div>
     </div>
-    <label>Detected UPI ID:</label>
-    <div id="upiId">Waiting for QR...</div>
-    <label for="amount">Enter Amount (₹):</label>
-    <input id="amount" type="number" min="1" placeholder="0.00" disabled>
+    <div class="field">
+      <label>Detected UPI ID</label>
+      <div id="upiId" class="value">Waiting for QR...</div>
+    </div>
+    <div class="field">
+      <label for="amount">Enter Amount (₹)</label>
+      <input id="amount" type="number" min="1" placeholder="0.00" disabled>
+    </div>
     <button id="shareBtn" disabled>Share Pay Link</button>
     <button id="scanAgainBtn" class="hidden">Scan Again</button>
   </div>
 
   <!-- Payment View -->
   <div id="payApp" class="container hidden">
-    <h2>Choose UPI App</h2>
-    <div id="payButtons">
-      <a id="gpayBtn" href="#" target="_blank"><button>Pay with GPay</button></a>
-      <a id="phonepeBtn" href="#" target="_blank"><button>Pay with PhonePe</button></a>
+    <h1>Choose UPI App</h1>
+    <div class="buttons">
+      <button id="gpayBtn">GPay</button>
+      <button id="phonepeBtn">PhonePe</button>
     </div>
   </div>
 
   <script>
-    const params = new URLSearchParams(window.location.search);
-    const pa = params.get('pa');
-    const am = params.get('am');
+    const params = new URLSearchParams(location.search);
+    const pa = params.get('pa'), am = params.get('am');
     const scannerApp = document.getElementById('scannerApp');
     const payApp = document.getElementById('payApp');
 
     if (pa && am) {
-      // Payment view
       scannerApp.classList.add('hidden');
       payApp.classList.remove('hidden');
       const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
       const isAndroid = /Android/.test(navigator.userAgent);
       let gpayUri, phonepeUri;
       if (isiOS) {
-        // iOS schemes
         gpayUri = `gpay://upi/pay?pa=${encodeURIComponent(pa)}&am=${encodeURIComponent(am)}&cu=INR`;
         phonepeUri = `phonepe://upi/pay?pa=${encodeURIComponent(pa)}&am=${encodeURIComponent(am)}&cu=INR`;
       } else if (isAndroid) {
-        // Android Intents
         gpayUri = `intent://pay?pa=${encodeURIComponent(pa)}&am=${encodeURIComponent(am)}&cu=INR#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end`;
         phonepeUri = `intent://pay?pa=${encodeURIComponent(pa)}&am=${encodeURIComponent(am)}&cu=INR#Intent;scheme=upi;package=com.phonepe.app;end`;
       } else {
-        // Fallback generic UPI
         gpayUri = phonepeUri = `upi://pay?pa=${encodeURIComponent(pa)}&am=${encodeURIComponent(am)}&cu=INR`;
       }
-      document.getElementById('gpayBtn').href = gpayUri;
-      document.getElementById('phonepeBtn').href = phonepeUri;
+      document.getElementById('gpayBtn').onclick = () => location.href = gpayUri;
+      document.getElementById('phonepeBtn').onclick = () => location.href = phonepeUri;
     } else {
-      // Scanner logic
       let scanning = false;
       const video = document.getElementById('video');
       const canvas = document.createElement('canvas');
@@ -88,7 +91,7 @@
 
       async function startCamera() {
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:640},height:{ideal:480}}});
+          const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
           video.srcObject = stream;
           await video.play();
           scanning = true;
@@ -99,18 +102,20 @@
           amountInput.disabled = true;
           shareBtn.disabled = true;
           requestAnimationFrame(scanFrame);
-        } catch(e) { alert('Camera error'); }
+        } catch (e) {
+          alert('Camera unavailable');
+        }
       }
 
       function scanFrame() {
         if (!scanning) return;
         if (video.readyState === video.HAVE_ENOUGH_DATA) {
-          canvas.width = video.videoWidth>>1;
-          canvas.height = video.videoHeight>>1;
-          ctx.drawImage(video,0,0,canvas.width,canvas.height);
-          const code = jsQR(ctx.getImageData(0,0,canvas.width,canvas.height).data,canvas.width,canvas.height,{inversionAttempts:'dontInvert'});
+          canvas.width = video.videoWidth >> 1;
+          canvas.height = video.videoHeight >> 1;
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const code = jsQR(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height, { inversionAttempts: 'dontInvert' });
           if (code && /upi:\/\/pay|\?pa=/.test(code.data)) {
-            const url = new URL(code.data.startsWith('upi://')?code.data:'upi://'+code.data);
+            const url = new URL(code.data.startsWith('upi://') ? code.data : 'upi://' + code.data);
             const upi = url.searchParams.get('pa');
             upiIdDiv.textContent = upi;
             amountInput.disabled = false;
