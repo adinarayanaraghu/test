@@ -44,10 +44,10 @@
         <input id="amount" type="number" min="1" placeholder="0.00">
       </div>
       <div class="field">
-        <label for="purpose">Purpose</label>
+        <label for="purpose">Purpose <span style="font-weight:400; color: var(--muted);">(optional)</span></label>
         <textarea id="purpose" rows="3" maxlength="250" placeholder="Purpose (max 250 chars)"></textarea>
       </div>
-      <button id="shareBtn">Share Pay Link</button>
+      <button id="shareBtn" disabled>Share Pay Link</button>
       <button id="scanAgainBtn">Scan Again</button>
     </div>
   </div>
@@ -105,6 +105,8 @@
           videoWrapper.classList.remove('hidden'); scanLine.style.display = '';
           details.classList.add('hidden'); scanAgainBtn.classList.add('hidden');
           upiIdDiv.textContent = 'Waiting for QR...'; amountInput.value = ''; purposeInput.value = '';
+          shareBtn.disabled = true;
+          amountInput.addEventListener('input', onAmountInput);
           requestAnimationFrame(scanFrame);
         } catch { alert('Camera unavailable'); }
       }
@@ -123,14 +125,22 @@
         }
         requestAnimationFrame(scanFrame);
       }
+      function onAmountInput() {
+        const val = parseFloat(amountInput.value);
+        shareBtn.disabled = !(val > 0);
+      }
       shareBtn.addEventListener('click', () => {
-        const upiParam = encodeURIComponent(upiIdDiv.textContent.trim());
         const amtVal = parseFloat(amountInput.value).toFixed(2);
-        const purposeVal = encodeURIComponent(purposeInput.value.trim());
-        if (!upiParam||!amtVal) return;
-        const link = `${location.origin}${location.pathname}?pa=${upiParam}&am=${amtVal}`;
-        const fullText = (purposeVal? purposeInput.value.trim()+'%0A':'' ) + link;
-        window.open(`https://wa.me/?text=${encodeURIComponent(fullText)}`, '_blank');
+        if (!amtVal) return;
+        const upiVal = upiIdDiv.textContent.trim();
+        const purposeVal = purposeInput.value.trim();
+        let msg = `Hello,%0A%0APlease complete a payment of ₹${amtVal} to UPI ID ${upiVal}`;
+        if (purposeVal) msg += ` for ${purposeVal}`;
+        msg += `%20by%20clicking%20the%20link%20below:%0A%0A`;
+        const link = `${location.origin}${location.pathname}?pa=${encodeURIComponent(upiVal)}&am=${amtVal}`;
+        msg += encodeURIComponent(link);
+        msg += `%0A%0AOnce the payment is successful, kindly share a screenshot of the confirmation with me.%0A%0AThank you!`;
+        window.open(`https://wa.me/?text=${msg}`, '_blank');
       });
       scanAgainBtn.addEventListener('click', startCamera);
       startCamera();
