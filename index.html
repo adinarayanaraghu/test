@@ -8,8 +8,8 @@
   <style>
     :root { --primary: #4F46E5; --bg: #fff; --text: #111; --muted: #666; }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text); }
-    .container { display: flex; flex-direction: column; min-height: 100%; max-width: 480px; margin: 0 auto; padding: 1rem; }
+    html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
+    .container { flex: 1; display: flex; flex-direction: column; max-width: 480px; width: 100%; margin: 0 auto; padding: 1rem; }
     h1 { font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; text-align: center; }
     .video-wrapper { position: relative; width: 100%; padding-top: 100%; overflow: hidden; border-radius: 8px; background: #eee; }
     video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
@@ -24,10 +24,11 @@
     .buttons { margin-top: 1rem; display: flex; gap: 0.5rem; }
     .buttons button { flex: 1; }
     .hidden { display: none !important; }
+    footer { text-align: center; padding: 0.5rem 0; font-size: 0.875rem; color: var(--muted); }
+    .heart { color: red; }
   </style>
 </head>
 <body>
-  <!-- Scanner View -->
   <div id="scannerApp" class="container">
     <h1>Scan UPI QR</h1>
     <div id="videoWrapper" class="video-wrapper">
@@ -44,7 +45,7 @@
         <input id="amount" type="number" min="1" placeholder="0.00">
       </div>
       <div class="field">
-        <label for="purpose">Purpose <span style="font-weight:400; color: var(--muted);">(optional)</span></label>
+        <label for="purpose">Purpose <span style="font-weight:400; color: var(--muted)">(optional)</span></label>
         <textarea id="purpose" rows="3" maxlength="250" placeholder="Purpose (max 250 chars)"></textarea>
       </div>
       <button id="shareBtn" disabled>Share Pay Link</button>
@@ -52,7 +53,6 @@
     </div>
   </div>
 
-  <!-- Payment View -->
   <div id="payApp" class="container hidden">
     <h1>Choose UPI App</h1>
     <div class="buttons">
@@ -61,7 +61,15 @@
     </div>
   </div>
 
+  <footer>
+    Made with <span class="heart">❤</span> by ECPL. &copy; <span id="year"></span>
+  </footer>
+
   <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const y = document.getElementById('year');
+      if (y) y.textContent = new Date().getFullYear();
+    });
     const params = new URLSearchParams(location.search);
     const pa = params.get('pa'), am = params.get('am');
     const scannerApp = document.getElementById('scannerApp');
@@ -126,8 +134,7 @@
         requestAnimationFrame(scanFrame);
       }
       function onAmountInput() {
-        const val = parseFloat(amountInput.value);
-        shareBtn.disabled = !(val > 0);
+        shareBtn.disabled = !(parseFloat(amountInput.value) > 0);
       }
       shareBtn.addEventListener('click', () => {
         const amtVal = parseFloat(amountInput.value).toFixed(2);
