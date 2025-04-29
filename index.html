@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Scan UPI QR</title>
+  <title>Generate PayLink</title>
   <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
   <style>
     :root { --primary: #4F46E5; --bg: #fff; --text: #111; --muted: #666; }
@@ -29,8 +29,9 @@
   </style>
 </head>
 <body>
+  <!-- Scanner View -->
   <div id="scannerApp" class="container">
-    <h1>Scan UPI QR</h1>
+    <h1>Generate PayLink</h1>
     <div id="videoWrapper" class="video-wrapper">
       <video id="video" autoplay muted playsinline></video>
       <div id="scanLine" class="scan-line"></div>
@@ -49,12 +50,13 @@
         <textarea id="purpose" rows="3" maxlength="250" placeholder="Purpose (max 250 chars)"></textarea>
       </div>
       <button id="shareBtn" disabled>Share Pay Link</button>
-      <button id="scanAgainBtn">Scan Again</button>
+      <button id="scanAgainBtn" class="hidden">Scan Again</button>
     </div>
   </div>
 
+  <!-- Payment View -->
   <div id="payApp" class="container hidden">
-    <h1>Choose UPI App</h1>
+    <h1>Pay using PayLink</h1>
     <div class="buttons">
       <button id="gpayBtn">GPay</button>
       <button id="phonepeBtn">PhonePe</button>
@@ -66,17 +68,21 @@
   </footer>
 
   <script>
+    // Footer year
     document.addEventListener('DOMContentLoaded', () => {
-      const y = document.getElementById('year');
-      if (y) y.textContent = new Date().getFullYear();
+      document.getElementById('year').textContent = new Date().getFullYear();
     });
+
+    // Dynamic title
+    function setTitle(text) { document.title = text; }
+
     const params = new URLSearchParams(location.search);
     const pa = params.get('pa'), am = params.get('am');
     const scannerApp = document.getElementById('scannerApp');
     const payApp = document.getElementById('payApp');
 
     if (pa && am) {
-      // Payment view
+      setTitle('Pay using PayLink');
       scannerApp.classList.add('hidden'); payApp.classList.remove('hidden');
       const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
       const isAndroid = /Android/.test(navigator.userAgent);
@@ -90,10 +96,10 @@
       } else {
         gpayUri = phonepeUri = `upi://pay?pa=${encodeURIComponent(pa)}&am=${encodeURIComponent(am)}&cu=INR`;
       }
-      document.getElementById('gpayBtn').addEventListener('click', () => location.href = gpayUri);
-      document.getElementById('phonepeBtn').addEventListener('click', () => location.href = phonepeUri);
+      document.getElementById('gpayBtn').onclick = () => location.href = gpayUri;
+      document.getElementById('phonepeBtn').onclick = () => location.href = phonepeUri;
     } else {
-      // Scanner logic
+      setTitle('Generate PayLink');
       let scanning = false;
       const video = document.getElementById('video');
       const videoWrapper = document.getElementById('videoWrapper');
@@ -113,8 +119,7 @@
           videoWrapper.classList.remove('hidden'); scanLine.style.display = '';
           details.classList.add('hidden'); scanAgainBtn.classList.add('hidden');
           upiIdDiv.textContent = 'Waiting for QR...'; amountInput.value = ''; purposeInput.value = '';
-          shareBtn.disabled = true;
-          amountInput.addEventListener('input', onAmountInput);
+          shareBtn.disabled = true; amountInput.addEventListener('input', onAmountInput);
           requestAnimationFrame(scanFrame);
         } catch { alert('Camera unavailable'); }
       }
@@ -136,7 +141,7 @@
       function onAmountInput() {
         shareBtn.disabled = !(parseFloat(amountInput.value) > 0);
       }
-      shareBtn.addEventListener('click', () => {
+      shareBtn.onclick = () => {
         const amtVal = parseFloat(amountInput.value).toFixed(2);
         if (!amtVal) return;
         const upiVal = upiIdDiv.textContent.trim();
@@ -148,10 +153,11 @@
         msg += encodeURIComponent(link);
         msg += `%0A%0AOnce the payment is successful, kindly share a screenshot of the confirmation with me.%0A%0AThank you!`;
         window.open(`https://wa.me/?text=${msg}`, '_blank');
-      });
-      scanAgainBtn.addEventListener('click', startCamera);
+      };
+      scanAgainBtn.onclick = startCamera;
       startCamera();
     }
   </script>
 </body>
 </html>
+
