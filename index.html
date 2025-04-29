@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>UPI QR Scanner & Payment</title>
+  <title>UPI QR Scanner & WhatsApp Share</title>
   <!-- jsQR for QR detection -->
   <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
   <style>
@@ -65,14 +65,13 @@
       border: 1px solid #ccc;
       word-break: break-all;
     }
-    input, button, a {
+    input, button {
       padding: 0.75rem;
       font-size: 1rem;
       border: 1px solid #ccc;
       border-radius: 6px;
-      text-decoration: none;
-      color: #111;
       background: #fff;
+      color: #111;
       word-break: break-all;
     }
     button:disabled {
@@ -81,15 +80,8 @@
     }
     #generateBtn {
       background: #e5e7eb;
-    }
-    #payNowBtn {
-      display: none;
-      background-color: #6366f1;
-      color: #fff;
-      text-align: center;
       border: none;
-      margin-top: 0.5rem;
-      display: inline-block;
+      cursor: pointer;
     }
     #scanAgainBtn {
       display: none;
@@ -101,7 +93,7 @@
   </style>
 </head>
 <body>
-  <h1>UPI QR Scanner & Payment</h1>
+  <h1>UPI QR Scanner & WhatsApp Share</h1>
   <div id="videoContainer">
     <video id="video" autoplay muted playsinline></video>
     <div id="scanLine"></div>
@@ -117,13 +109,12 @@
       <label for="amount">Enter Amount (₹):</label>
       <input type="number" id="amount" min="1" placeholder="0.00" disabled>
     </div>
-    <button id="generateBtn" disabled>Generate Pay Link</button>
-    <a id="payNowBtn" target="_blank">Pay Now</a>
+    <button id="generateBtn" disabled>Share Pay Link</button>
     <button id="scanAgainBtn">Scan Again</button>
   </div>
 
   <script>
-    // If UPI params in URL, trigger intent
+    // Trigger UPI intent if URL params present
     (function() {
       const p = new URLSearchParams(window.location.search);
       const pa = p.get('pa'), am = p.get('am');
@@ -138,7 +129,6 @@
     const upiIdDiv = document.getElementById('upiId');
     const amountInput = document.getElementById('amount');
     const generateBtn = document.getElementById('generateBtn');
-    const payNowBtn = document.getElementById('payNowBtn');
     const scanLine = document.getElementById('scanLine');
     const scanAgainBtn = document.getElementById('scanAgainBtn');
     const ctx = canvas.getContext('2d');
@@ -146,9 +136,7 @@
 
     async function startCamera() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }
-        });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } } });
         video.srcObject = stream;
         video.play();
         scanning = true;
@@ -159,10 +147,8 @@
         amountInput.value = '';
         amountInput.disabled = true;
         generateBtn.disabled = true;
-        payNowBtn.style.display = 'none';
         requestAnimationFrame(scanFrame);
       } catch (e) {
-        console.error(e);
         alert('Error accessing camera.');
       }
     }
@@ -192,17 +178,18 @@
     }
 
     generateBtn.addEventListener('click', () => {
-      const upi = upiIdDiv.textContent.trim();
+      const upi = encodeURIComponent(upiIdDiv.textContent.trim());
       const amt = parseFloat(amountInput.value).toFixed(2);
       if (!upi || !amt) return;
-      const intentUri = `upi://pay?pa=${encodeURIComponent(upi)}&am=${amt}&cu=INR`;
-      payNowBtn.href = intentUri;
-      payNowBtn.style.display = 'inline-block';
+      const baseUrl = `${window.location.origin}${window.location.pathname}`;
+      const shareUrl = `${baseUrl}?pa=${upi}&am=${amt}`;
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareUrl)}`;
+      window.open(whatsappUrl, '_blank');
     });
 
     scanAgainBtn.addEventListener('click', startCamera);
 
-    // Initialize on load
+    // initialize on load
     startCamera();
   </script>
 </body>
