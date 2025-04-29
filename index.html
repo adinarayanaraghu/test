@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Shareable UPI Payment</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2rem;
+      max-width: 420px;
+      margin: auto;
+      text-align: center;
+    }
+    h2 { margin-bottom: 1rem; }
+    .field {
+      margin: 1rem 0;
+      text-align: left;
+    }
+    label {
+      display: block;
+      margin-bottom: 0.25rem;
+      font-weight: bold;
+    }
+    input {
+      width: 100%;
+      padding: 0.5rem;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      margin-top: 1rem;
+      padding: 0.75rem 1rem;
+      background: #22c55e;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    button:hover { background: #16a34a; }
+    .secondary {
+      background: #6366f1;
+    }
+    .secondary:hover { background: #4f46e5; }
+    #result {
+      margin-top: 1.5rem;
+      word-break: break-word;
+    }
+    #result a.pay-btn {
+      display: inline-block;
+      margin-top: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: #22c55e;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+    }
+    #result a.pay-btn:hover { background: #16a34a; }
+  </style>
+</head>
+<body>
+  <h2>Shareable UPI Payment</h2>
+
+  <div id="form-container">
+    <div class="field">
+      <label for="upiId">UPI ID</label>
+      <input type="text" id="upiId" placeholder="example@bank"/>
+    </div>
+    <div class="field">
+      <label for="amount">Amount (₹)</label>
+      <input type="number" id="amount" placeholder="100.00" min="0.01" step="0.01"/>
+    </div>
+    <button id="generateBtn">Generate &amp; Share on WhatsApp</button>
+    <div id="result"></div>
+  </div>
+
+  <div id="pay-container" style="display:none">
+    <p id="pay-info"></p>
+    <a id="payNowBtn" class="pay-btn">Pay Now</a>
+  </div>
+
+  <script>
+    const formContainer = document.getElementById('form-container');
+    const payContainer = document.getElementById('pay-container');
+    const resultDiv    = document.getElementById('result');
+    const upiInput     = document.getElementById('upiId');
+    const amtInput     = document.getElementById('amount');
+    const generateBtn  = document.getElementById('generateBtn');
+    const payInfo      = document.getElementById('pay-info');
+    const payNowBtn    = document.getElementById('payNowBtn');
+
+    // Check if URL has params
+    const params = new URLSearchParams(window.location.search);
+    const pa = params.get('pa');
+    const am = params.get('am');
+
+    if (pa && am) {
+      // Show Pay Now view
+      formContainer.style.display = 'none';
+      payContainer.style.display = 'block';
+      payInfo.textContent = `You’ve been asked to pay ₹${parseFloat(am).toFixed(2)} to ${pa}`;
+      const intentURI = `upi://pay?pa=${encodeURIComponent(pa)}&am=${encodeURIComponent(parseFloat(am).toFixed(2))}&cu=INR`;
+      payNowBtn.href = intentURI;
+    }
+
+    generateBtn.addEventListener('click', () => {
+      const upiId = upiInput.value.trim();
+      const amount = parseFloat(amtInput.value);
+      resultDiv.innerHTML = '';
+
+      if (!upiId) {
+        resultDiv.textContent = 'Please enter a valid UPI ID.';
+        return;
+      }
+      if (isNaN(amount) || amount <= 0) {
+        resultDiv.textContent = 'Please enter a valid amount.';
+        return;
+      }
+
+      // Build shareable link
+      const base = `${window.location.origin}${window.location.pathname}`;
+      const shareLink = `${base}?pa=${encodeURIComponent(upiId)}&am=${encodeURIComponent(amount.toFixed(2))}`;
+
+      // Build WhatsApp share URL
+      const waText = encodeURIComponent(`Click here to pay ₹${amount.toFixed(2)} to ${upiId}:
+${shareLink}`);
+      const waURL  = `https://wa.me/?text=${waText}`;
+
+      // Show copyable link and WhatsApp button
+      const linkEl = document.createElement('input');
+      linkEl.type = 'text';
+      linkEl.readOnly = True;
+      linkEl.value = shareLink;
+      linkEl.style.marginTop = '1rem';
+      linkEl.style.cursor = 'pointer';
+      linkEl.title = 'Click to copy';
+      linkEl.addEventListener('click', () => {
+        linkEl.select();
+        document.execCommand('copy');
+      });
+
+      const waBtn = document.createElement('button');
+      waBtn.textContent = 'Share via WhatsApp';
+      waBtn.classList.add('secondary');
+      waBtn.addEventListener('click', () => window.open(waURL, '_blank'));
+
+      resultDiv.appendChild(linkEl);
+      resultDiv.appendChild(waBtn);
+    });
+  </script>
+</body>
+</html>
