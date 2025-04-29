@@ -26,7 +26,7 @@
 <body>
   <h2>Shareable UPI Payment</h2>
 
-  <!-- Step 1: Input form -->
+  <!-- Input Form -->
   <div id="form-container">
     <div class="field">
       <label for="upiId">UPI ID</label>
@@ -40,7 +40,7 @@
     <div id="result"></div>
   </div>
 
-  <!-- Step 2: Pay Now view -->
+  <!-- Pay Now View -->
   <div id="pay-container" style="display:none; margin-top:2rem;">
     <p id="pay-info"></p>
     <button class="pay" id="payNowBtn">Pay Now</button>
@@ -56,7 +56,7 @@
     const payInfo       = document.getElementById('pay-info');
     const payNowBtn     = document.getElementById('payNowBtn');
 
-    // On load: if URL has pa & am, show Pay Now view
+    // If URL contains pa & am, show Pay Now
     const params = new URLSearchParams(window.location.search);
     const pa = params.get('pa'), am = params.get('am');
     if (pa && am) {
@@ -65,15 +65,19 @@
       payInfo.textContent = `Please pay ₹${parseFloat(am).toFixed(2)} to ${pa}`;
 
       payNowBtn.addEventListener('click', () => {
-        const upiURI = `upi://pay?pa=${encodeURIComponent(pa)}&am=${encodeURIComponent(parseFloat(am).toFixed(2))}&cu=INR`;
-        const intentURI = `intent://pay?pa=${encodeURIComponent(pa)}&am=${encodeURIComponent(parseFloat(am).toFixed(2))}&cu=INR#Intent;scheme=upi;end`;
+        const upiURI    = `upi://pay?pa=${encodeURIComponent(pa)}&am=${encodeURIComponent(parseFloat(am).toFixed(2))}&cu=INR`;
+        const intentURI =
+          `intent://pay?pa=${encodeURIComponent(pa)}` +
+          `&am=${encodeURIComponent(parseFloat(am).toFixed(2))}` +
+          `&cu=INR#Intent;scheme=upi;action=android.intent.action.VIEW;end`;
+
         const ua = navigator.userAgent || '';
-        // Android → intent chooser; else → standard upi://
+        // Android → intent chooser; else → fallback to standard UPI URI
         window.location.href = /android/i.test(ua) ? intentURI : upiURI;
       });
     }
 
-    // Generate share link & WhatsApp button
+    // Generate & share link
     generateBtn.addEventListener('click', () => {
       const upiId  = upiInput.value.trim();
       const amount = parseFloat(amtInput.value);
@@ -89,7 +93,7 @@
       const base      = `${location.origin}${location.pathname}`;
       const shareLink = `${base}?pa=${encodeURIComponent(upiId)}&am=${encodeURIComponent(amount.toFixed(2))}`;
 
-      // Click-to-copy link field
+      // Copyable link field
       const linkEl = document.createElement('input');
       linkEl.type = 'text';
       linkEl.value = shareLink;
@@ -99,7 +103,7 @@
         linkEl.select(); document.execCommand('copy');
       });
 
-      // WhatsApp share anchor
+      // WhatsApp share button
       const waText = encodeURIComponent(`Click to pay ₹${amount.toFixed(2)} to ${upiId}:\n${shareLink}`);
       const waURL  = `https://wa.me/?text=${waText}`;
       const waBtn  = document.createElement('a');
