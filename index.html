@@ -1,56 +1,124 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>UPI Deep Link</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>UPI Pay Now</title>
   <style>
     body {
-      display: flex;
-      height: 100vh;
       margin: 0;
+      height: 100vh;
+      display: flex;
       align-items: center;
       justify-content: center;
-      background: #f4f4f4;
       font-family: sans-serif;
+      background: #f0f0f0;
     }
-    .btn {
-      display: inline-block;
-      padding: 16px 32px;
-      font-size: 1rem;
-      color: #ffffff;
-      background-color: #1abc9c;
+    #payNow {
+      padding: 14px 28px;
+      background: #1abc9c;
+      color: #fff;
       border: none;
-      border-radius: 8px;
-      text-decoration: none;
-      text-align: center;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
     }
-    .btn:active {
-      transform: scale(0.98);
+    /* Modal backdrop */
+    #modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      align-items: center;
+      justify-content: center;
+    }
+    /* Modal content box */
+    #modal .content {
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+      width: 90%;
+      max-width: 300px;
+    }
+    #modal h3 {
+      margin-top: 0;
+      font-size: 1.2rem;
+    }
+    #modal button {
+      margin: 8px 0;
+      width: 100%;
+      padding: 10px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    #gpayBtn { background: #fff; color: #000; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+    #phonepeBtn { background: #673ab7; color: #fff; }
+    #closeModal {
+      position: absolute;
+      top: 16px; right: 16px;
+      background: none;
+      border: none;
+      font-size: 1.4rem;
+      color: #333;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
 
-  <!-- The UPI deep‐link anchor -->
-  <a
-    class="btn"
-    href="upi://pay?pa=adinarayanaraghu95@okaxis&pn=Adinarayana%20Raghu&cu=INR"
-  >
-    Pay via UPI
-  </a>
+  <button id="payNow">Pay Now</button>
+
+  <div id="modal">
+    <div class="content">
+      <button id="closeModal">&times;</button>
+      <h3>Choose UPI App</h3>
+      <button id="gpayBtn">Google Pay</button>
+      <button id="phonepeBtn">PhonePe</button>
+    </div>
+  </div>
 
   <script>
-    // Optional: if you want to detect failures (no handler), you could set a timeout
-    const upiLink = document.querySelector('.btn');
-    upiLink.addEventListener('click', () => {
-      // Start a timer; if after 2s the page hasn't left, assume no UPI app
-      const fallback = setTimeout(() => {
-        alert('No UPI app detected. Please install one like Google Pay, PhonePe, or BHIM.');
-      }, 2000);
+    // Common UPI parameters
+    const upiParams = '?pa=adinarayanaraghu95@okaxis' +
+                      '&pn=Adinarayana%20Raghu' +
+                      '&cu=INR';
 
-      // If the navigation succeeds, the browser will switch away and never clear this
-      window.addEventListener('pagehide', () => clearTimeout(fallback));
+    // Android‐intent URLs for each app
+    const gpayIntent = 'intent://upi/pay' + upiParams +
+                       '#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end';
+    const phonepeIntent = 'intent://upi/pay' + upiParams +
+                          '#Intent;scheme=upi;package=com.phonepe.app;end';
+
+    // Fallback generic UPI link for iOS or any other platform
+    const genericUpi = 'upi://pay' + upiParams;
+
+    // Utility to launch the right link
+    function launch(link) {
+      const ua = navigator.userAgent;
+      if (/Android/i.test(ua)) {
+        // On Android, use the intent:// which targets the specific package
+        window.location.href = link;
+      } else {
+        // On iOS (or desktop), fall back to generic upi://
+        window.location.href = genericUpi;
+      }
+    }
+
+    // Modal open/close
+    const modal = document.getElementById('modal');
+    document.getElementById('payNow').onclick = () => modal.style.display = 'flex';
+    document.getElementById('closeModal').onclick = () => modal.style.display = 'none';
+
+    // Button handlers
+    document.getElementById('gpayBtn').onclick = () => launch(gpayIntent);
+    document.getElementById('phonepeBtn').onclick = () => launch(phonepeIntent);
+
+    // Close if user taps outside content
+    modal.addEventListener('click', e => {
+      if (e.target === modal) modal.style.display = 'none';
     });
   </script>
 
