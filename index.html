@@ -48,22 +48,32 @@
 
   <script>
     const params = new URLSearchParams(window.location.search);
-    const pa = params.get('pa'), am = params.get('am');
+    const pa = params.get('pa');
+    const am = params.get('am');
     const scannerApp = document.getElementById('scannerApp');
     const payApp = document.getElementById('payApp');
 
     if (pa && am) {
-      // Switch to payment view
+      // Payment view
       scannerApp.classList.add('hidden');
       payApp.classList.remove('hidden');
-      // Base UPI intent
-      const baseIntent = `upi://pay?pa=${encodeURIComponent(pa)}&am=${encodeURIComponent(am)}&cu=INR`;
-      // Google Pay specific intent
-      const gpayIntent = `intent://pay?pa=${encodeURIComponent(pa)}&am=${encodeURIComponent(am)}&cu=INR#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end`;
-      // PhonePe specific intent
-      const phonepeIntent = `intent://pay?pa=${encodeURIComponent(pa)}&am=${encodeURIComponent(am)}&cu=INR#Intent;scheme=upi;package=com.phonepe.app;end`;
-      document.getElementById('gpayBtn').href = gpayIntent;
-      document.getElementById('phonepeBtn').href = phonepeIntent;
+      const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      const isAndroid = /Android/.test(navigator.userAgent);
+      let gpayUri, phonepeUri;
+      if (isiOS) {
+        // iOS schemes
+        gpayUri = `gpay://upi/pay?pa=${encodeURIComponent(pa)}&am=${encodeURIComponent(am)}&cu=INR`;
+        phonepeUri = `phonepe://upi/pay?pa=${encodeURIComponent(pa)}&am=${encodeURIComponent(am)}&cu=INR`;
+      } else if (isAndroid) {
+        // Android Intents
+        gpayUri = `intent://pay?pa=${encodeURIComponent(pa)}&am=${encodeURIComponent(am)}&cu=INR#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end`;
+        phonepeUri = `intent://pay?pa=${encodeURIComponent(pa)}&am=${encodeURIComponent(am)}&cu=INR#Intent;scheme=upi;package=com.phonepe.app;end`;
+      } else {
+        // Fallback generic UPI
+        gpayUri = phonepeUri = `upi://pay?pa=${encodeURIComponent(pa)}&am=${encodeURIComponent(am)}&cu=INR`;
+      }
+      document.getElementById('gpayBtn').href = gpayUri;
+      document.getElementById('phonepeBtn').href = phonepeUri;
     } else {
       // Scanner logic
       let scanning = false;
@@ -116,10 +126,10 @@
 
       shareBtn.addEventListener('click', () => {
         const upiParam = encodeURIComponent(upiIdDiv.textContent.trim());
-        const amt = parseFloat(amountInput.value).toFixed(2);
-        if (!upiParam || !amt) return;
-        const link = `${location.origin}${location.pathname}?pa=${upiParam}&am=${amt}`;
-        window.open(`https://wa.me/?text=${encodeURIComponent(link)}`,'_blank');
+        const amtVal = parseFloat(amountInput.value).toFixed(2);
+        if (!upiParam || !amtVal) return;
+        const link = `${location.origin}${location.pathname}?pa=${upiParam}&am=${amtVal}`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(link)}`, '_blank');
       });
 
       scanAgainBtn.addEventListener('click', startCamera);
