@@ -41,14 +41,24 @@
     }
     button:hover { background: #16a34a; }
     .secondary {
+      display: inline-block;
+      margin-top: 1rem;
+      padding: 0.75rem 1rem;
       background: #6366f1;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      cursor: pointer;
     }
     .secondary:hover { background: #4f46e5; }
     #result {
       margin-top: 1.5rem;
       word-break: break-word;
     }
-    #result a.pay-btn {
+    #pay-container {
+      margin-top: 2rem;
+    }
+    #pay-container a.pay-btn {
       display: inline-block;
       margin-top: 0.5rem;
       padding: 0.5rem 1rem;
@@ -57,7 +67,7 @@
       text-decoration: none;
       border-radius: 4px;
     }
-    #result a.pay-btn:hover { background: #16a34a; }
+    #pay-container a.pay-btn:hover { background: #16a34a; }
   </style>
 </head>
 <body>
@@ -83,26 +93,22 @@
 
   <script>
     const formContainer = document.getElementById('form-container');
-    const payContainer = document.getElementById('pay-container');
-    const resultDiv    = document.getElementById('result');
-    const upiInput     = document.getElementById('upiId');
-    const amtInput     = document.getElementById('amount');
-    const generateBtn  = document.getElementById('generateBtn');
-    const payInfo      = document.getElementById('pay-info');
-    const payNowBtn    = document.getElementById('payNowBtn');
+    const payContainer  = document.getElementById('pay-container');
+    const resultDiv     = document.getElementById('result');
+    const upiInput      = document.getElementById('upiId');
+    const amtInput      = document.getElementById('amount');
+    const generateBtn   = document.getElementById('generateBtn');
+    const payInfo       = document.getElementById('pay-info');
+    const payNowBtn     = document.getElementById('payNowBtn');
 
-    // Check if URL has params
+    // If URL has pa & am, show the Pay Now view
     const params = new URLSearchParams(window.location.search);
-    const pa = params.get('pa');
-    const am = params.get('am');
-
+    const pa = params.get('pa'), am = params.get('am');
     if (pa && am) {
-      // Show Pay Now view
       formContainer.style.display = 'none';
       payContainer.style.display = 'block';
       payInfo.textContent = `You’ve been asked to pay ₹${parseFloat(am).toFixed(2)} to ${pa}`;
-      const intentURI = `upi://pay?pa=${encodeURIComponent(pa)}&am=${encodeURIComponent(parseFloat(am).toFixed(2))}&cu=INR`;
-      payNowBtn.href = intentURI;
+      payNowBtn.href = `upi://pay?pa=${encodeURIComponent(pa)}&am=${encodeURIComponent(parseFloat(am).toFixed(2))}&cu=INR`;
     }
 
     generateBtn.addEventListener('click', () => {
@@ -119,20 +125,21 @@
         return;
       }
 
-      // Build shareable link
+      // Build shareable page URL
       const base = `${window.location.origin}${window.location.pathname}`;
       const shareLink = `${base}?pa=${encodeURIComponent(upiId)}&am=${encodeURIComponent(amount.toFixed(2))}`;
 
-      // Build WhatsApp share URL
-      const waText = encodeURIComponent(`Click here to pay ₹${amount.toFixed(2)} to ${upiId}:
-${shareLink}`);
-      const waURL  = `https://wa.me/?text=${waText}`;
+      // WhatsApp share URL
+      const waText = encodeURIComponent(
+        `Click here to pay ₹${amount.toFixed(2)} to ${upiId}:\n${shareLink}`
+      );
+      const waURL = `https://wa.me/?text=${waText}`;
 
-      // Show copyable link and WhatsApp button
+      // Copyable link field
       const linkEl = document.createElement('input');
       linkEl.type = 'text';
-      linkEl.readOnly = True;
       linkEl.value = shareLink;
+      linkEl.setAttribute('readonly', '');
       linkEl.style.marginTop = '1rem';
       linkEl.style.cursor = 'pointer';
       linkEl.title = 'Click to copy';
@@ -141,13 +148,15 @@ ${shareLink}`);
         document.execCommand('copy');
       });
 
-      const waBtn = document.createElement('button');
-      waBtn.textContent = 'Share via WhatsApp';
-      waBtn.classList.add('secondary');
-      waBtn.addEventListener('click', () => window.open(waURL, '_blank'));
+      // WhatsApp anchor
+      const waLink = document.createElement('a');
+      waLink.href = waURL;
+      waLink.target = '_blank';
+      waLink.className = 'secondary';
+      waLink.textContent = 'Share via WhatsApp';
 
       resultDiv.appendChild(linkEl);
-      resultDiv.appendChild(waBtn);
+      resultDiv.appendChild(waLink);
     });
   </script>
 </body>
