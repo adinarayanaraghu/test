@@ -3,31 +3,116 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>UPI Payment</title>
+  <title>UPI Scanner & Payment</title>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
   <style>
-    body { display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: Arial, sans-serif; background: #f2f2f2; }
-    #payButton { padding: 1rem 2rem; font-size: 1.25rem; background-color: #6366f1; color: #fff; border: none; border-radius: 8px; text-decoration: none; }
+    body { margin:0; font-family:Arial,sans-serif; background:#f2f2f2; color:#111; }
+    .container { padding:1rem; max-width:400px; margin:0 auto; }
+    .hidden { display:none !important; }
+    #videoContainer { position:relative; width:100%; padding-top:75%; }
+    #video, #canvas { position:absolute; top:0; left:0; width:100%; height:100%; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.2); }
+    #scanLine { position:absolute; width:100%; height:2px; background:rgba(255,0,0,0.8); animation:scanAnim 2s infinite; }
+    @keyframes scanAnim { 0%{top:0%;}100%{top:100%;} }
+    label { font-weight:bold; margin-top:1rem; display:block; }
+    input, button { width:100%; padding:0.75rem; font-size:1rem; margin-top:0.25rem; border:1px solid #ccc; border-radius:6px; box-sizing:border-box; }
+    button { background:#6366f1; color:#fff; border:none; cursor:pointer; }
+    button:disabled { background:#e5e7eb; color:#888; cursor:not-allowed; }
+    #payButton { text-align:center; text-decoration:none; display:block; margin:2rem auto; }
   </style>
 </head>
 <body>
+  <div id="scannerApp" class="container">
+    <h2>UPI QR Scanner & Share</h2>
+    <div id="videoContainer">
+      <video id="video" autoplay muted playsinline></video>
+      <div id="scanLine"></div>
+    </div>
+    <label>Detected UPI ID:</label>
+    <div id="upiId">Waiting for QR...</div>
+    <label for="amount">Enter Amount (₹):</label>
+    <input id="amount" type="number" min="1" placeholder="0.00" disabled>
+    <button id="shareBtn" disabled>Share Pay Link</button>
+    <button id="scanAgainBtn" class="hidden">Scan Again</button>
+  </div>
+
+  <div id="payApp" class="container hidden">
+    <h2>UPI Payment</h2>
+    <a id="payButton" href="#" target="_blank"><button>Pay Now</button></a>
+  </div>
+
   <script>
-    // On pageload, check for UPI params
     const params = new URLSearchParams(window.location.search);
-    const pa = params.get('pa');
-    const am = params.get('am');
+    const pa = params.get('pa'); const am = params.get('am');
+    const scannerApp = document.getElementById('scannerApp');
+    const payApp = document.getElementById('payApp');
+
     if (pa && am) {
-      // Build UPI intent link
+      // Show payment page
+      scannerApp.classList.add('hidden');
+      payApp.classList.remove('hidden');
       const intent = `upi://pay?pa=${encodeURIComponent(pa)}&am=${encodeURIComponent(am)}&cu=INR`;
-      // Create and display Pay Now button
-      const btn = document.createElement('a');
-      btn.id = 'payButton';
-      btn.href = intent;
-      btn.textContent = 'Pay Now';
-      btn.setAttribute('target', '_blank');
-      document.body.appendChild(btn);
+      document.getElementById('payButton').href = intent;
     } else {
-      // No params: redirect to scanner app page or show message
-      document.body.innerHTML = '<p>Invalid link.</p>';
+      // Show scanner page
+      let scanning = false;
+      const video = document.getElementById('video');
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const scanLine = document.getElementById('scanLine');
+      const upiIdDiv = document.getElementById('upiId');
+      const amountInput = document.getElementById('amount');
+      const shareBtn = document.getElementById('shareBtn');
+      const scanAgainBtn = document.getElementById('scanAgainBtn');
+      
+      async function startCamera() {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode:'environment', width:{ideal:640}, height:{ideal:480} } });
+          video.srcObject = stream;
+          await video.play();
+          scanning = true;
+          scanLine.style.display = '';
+          scanAgainBtn.classList.add('hidden');
+          upiIdDiv.textContent = 'Waiting for QR...';
+          amountInput.value = '';
+          amountInput.disabled = true;
+          shareBtn.disabled = true;
+          requestAnimationFrame(scanFrame);
+        } catch(e) { alert('Camera error'); }
+      }
+
+      function scanFrame() {
+        if (!scanning) return;
+        if (video.readyState === video.HAVE_ENOUGH_DATA) {
+          canvas.width = video.videoWidth>>1;
+          canvas.height = video.videoHeight>>1;
+          ctx.drawImage(video,0,0,canvas.width,canvas.height);
+          const code = jsQR(ctx.getImageData(0,0,canvas.width,canvas.height).data, canvas.width,canvas.height,{inversionAttempts:'dontInvert'});
+          if (code && /upi:\/\/pay|\?pa=/.test(code.data)) {
+            const url = new URL(code.data.startsWith('upi://')?code.data:'upi://'+code.data);
+            const upi = url.searchParams.get('pa');
+            upiIdDiv.textContent = upi;
+            amountInput.disabled = false;
+            shareBtn.disabled = false;
+            scanning = false;
+            scanLine.style.display = 'none';
+            scanAgainBtn.classList.remove('hidden');
+            return;
+          }
+        }
+        requestAnimationFrame(scanFrame);
+      }
+
+      shareBtn.addEventListener('click', () => {
+        const upiParam = encodeURIComponent(upiIdDiv.textContent.trim());
+        const amt = parseFloat(amountInput.value).toFixed(2);
+        if (!upiParam || !amt) return;
+        const link = `${location.origin}${location.pathname}?pa=${upiParam}&am=${amt}`;
+        const wa = `https://wa.me/?text=${encodeURIComponent(link)}`;
+        window.open(wa,'_blank');
+      });
+
+      scanAgainBtn.addEventListener('click', startCamera);
+      startCamera();
     }
   </script>
 </body>
