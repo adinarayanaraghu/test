@@ -1,73 +1,28 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Shareable UPI Payment</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 2rem;
-      max-width: 420px;
-      margin: auto;
-      text-align: center;
+    body { font-family: Arial, sans-serif; padding:2rem; max-width:420px; margin:auto; text-align:center; }
+    h2 { margin-bottom:1rem; }
+    .field { margin:1rem 0; text-align:left; }
+    label { display:block; margin-bottom:.25rem; font-weight:bold; }
+    input { width:100%; padding:.5rem; border:1px solid #ccc; border-radius:4px; }
+    button, a.secondary, button.pay-btn {
+      margin-top:1rem; padding:.75rem 1rem; font-size:1rem;
+      border:none; border-radius:4px; cursor:pointer;
     }
-    h2 { margin-bottom: 1rem; }
-    .field {
-      margin: 1rem 0;
-      text-align: left;
+    button { background:#22c55e; color:#fff; }
+    button:hover { background:#16a34a; }
+    a.secondary {
+      background:#6366f1; color:#fff; text-decoration:none; display:inline-block;
     }
-    label {
-      display: block;
-      margin-bottom: 0.25rem;
-      font-weight: bold;
-    }
-    input {
-      width: 100%;
-      padding: 0.5rem;
-      box-sizing: border-box;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-    button {
-      margin-top: 1rem;
-      padding: 0.75rem 1rem;
-      background: #22c55e;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 1rem;
-    }
-    button:hover { background: #16a34a; }
-    .secondary {
-      display: inline-block;
-      margin-top: 1rem;
-      padding: 0.75rem 1rem;
-      background: #6366f1;
-      color: white;
-      text-decoration: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    .secondary:hover { background: #4f46e5; }
-    #result {
-      margin-top: 1.5rem;
-      word-break: break-word;
-    }
-    #pay-container {
-      margin-top: 2rem;
-    }
-    #pay-container a.pay-btn {
-      display: inline-block;
-      margin-top: 0.5rem;
-      padding: 0.5rem 1rem;
-      background: #22c55e;
-      color: white;
-      text-decoration: none;
-      border-radius: 4px;
-    }
-    #pay-container a.pay-btn:hover { background: #16a34a; }
+    a.secondary:hover { background:#4f46e5; }
+    button.pay-btn { background:#22c55e; color:#fff; }
+    button.pay-btn:hover { background:#16a34a; }
+    #result { margin-top:1.5rem; word-break:break-word; }
   </style>
 </head>
 <body>
@@ -76,11 +31,11 @@
   <div id="form-container">
     <div class="field">
       <label for="upiId">UPI ID</label>
-      <input type="text" id="upiId" placeholder="example@bank"/>
+      <input id="upiId" placeholder="example@bank"/>
     </div>
     <div class="field">
       <label for="amount">Amount (₹)</label>
-      <input type="number" id="amount" placeholder="100.00" min="0.01" step="0.01"/>
+      <input id="amount" type="number" min="0.01" step="0.01" placeholder="100.00"/>
     </div>
     <button id="generateBtn">Generate &amp; Share on WhatsApp</button>
     <div id="result"></div>
@@ -88,7 +43,7 @@
 
   <div id="pay-container" style="display:none">
     <p id="pay-info"></p>
-    <a id="payNowBtn" class="pay-btn">Pay Now</a>
+    <button id="payNowBtn" class="pay-btn">Pay Now</button>
   </div>
 
   <script>
@@ -101,54 +56,65 @@
     const payInfo       = document.getElementById('pay-info');
     const payNowBtn     = document.getElementById('payNowBtn');
 
-    // If URL has pa & am, show the Pay Now view
+    // On load, check for pa & am in URL → show Pay view
     const params = new URLSearchParams(window.location.search);
     const pa = params.get('pa'), am = params.get('am');
     if (pa && am) {
       formContainer.style.display = 'none';
       payContainer.style.display = 'block';
-      payInfo.textContent = `You’ve been asked to pay ₹${parseFloat(am).toFixed(2)} to ${pa}`;
-      payNowBtn.href = `upi://pay?pa=${encodeURIComponent(pa)}&am=${encodeURIComponent(parseFloat(am).toFixed(2))}&cu=INR`;
+      payInfo.textContent = `Please pay ₹${parseFloat(am).toFixed(2)} to ${pa}`;
+
+      payNowBtn.addEventListener('click', () => {
+        const upiURI    = `upi://pay?pa=${encodeURIComponent(pa)}&am=${encodeURIComponent(parseFloat(am).toFixed(2))}&cu=INR`;
+        const intentURI =
+          `intent://pay?pa=${encodeURIComponent(pa)}` +
+          `&am=${encodeURIComponent(parseFloat(am).toFixed(2))}` +
+          `&cu=INR#Intent;scheme=upi;end`;
+
+        const ua = navigator.userAgent || '';
+        if (/android/i.test(ua)) {
+          // Android: launch chooser of all UPI apps
+          window.location.href = intentURI;
+        } else {
+          // iOS/others: fall back to standard UPI URI
+          window.location.href = upiURI;
+        }
+      });
     }
 
+    // Generate & share link
     generateBtn.addEventListener('click', () => {
-      const upiId = upiInput.value.trim();
+      const upiId  = upiInput.value.trim();
       const amount = parseFloat(amtInput.value);
       resultDiv.innerHTML = '';
 
       if (!upiId) {
-        resultDiv.textContent = 'Please enter a valid UPI ID.';
+        resultDiv.textContent = 'Enter a valid UPI ID.';
         return;
       }
       if (isNaN(amount) || amount <= 0) {
-        resultDiv.textContent = 'Please enter a valid amount.';
+        resultDiv.textContent = 'Enter a valid amount.';
         return;
       }
 
-      // Build shareable page URL
-      const base = `${window.location.origin}${window.location.pathname}`;
+      const base      = `${location.origin}${location.pathname}`;
       const shareLink = `${base}?pa=${encodeURIComponent(upiId)}&am=${encodeURIComponent(amount.toFixed(2))}`;
 
-      // WhatsApp share URL
-      const waText = encodeURIComponent(
-        `Click here to pay ₹${amount.toFixed(2)} to ${upiId}:\n${shareLink}`
-      );
-      const waURL = `https://wa.me/?text=${waText}`;
-
-      // Copyable link field
+      // Copyable link
       const linkEl = document.createElement('input');
       linkEl.type = 'text';
       linkEl.value = shareLink;
-      linkEl.setAttribute('readonly', '');
+      linkEl.readOnly = true;
       linkEl.style.marginTop = '1rem';
-      linkEl.style.cursor = 'pointer';
       linkEl.title = 'Click to copy';
       linkEl.addEventListener('click', () => {
         linkEl.select();
         document.execCommand('copy');
       });
 
-      // WhatsApp anchor
+      // WhatsApp share button
+      const waText = encodeURIComponent(`Click to pay ₹${amount.toFixed(2)} to ${upiId}:\n${shareLink}`);
+      const waURL  = `https://wa.me/?text=${waText}`;
       const waLink = document.createElement('a');
       waLink.href = waURL;
       waLink.target = '_blank';
