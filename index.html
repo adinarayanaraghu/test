@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>UPI QR Scanner & Payment Link</title>
+  <title>UPI QR Scanner & Payment</title>
   <!-- jsQR for QR detection -->
   <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
   <style>
@@ -35,8 +35,6 @@
     }
     #scanLine {
       position: absolute;
-      top: 0;
-      left: 0;
       width: 100%;
       height: 2px;
       background: rgba(255, 0, 0, 0.8);
@@ -75,19 +73,21 @@
       text-decoration: none;
       color: #111;
       word-break: break-all;
-    }
-    input {
       background: #fff;
     }
     button:disabled {
       opacity: 0.6;
       cursor: not-allowed;
     }
-    #shareLink {
+    #generateBtn {
+      background: #e5e7eb;
+    }
+    #payNowBtn {
       display: none;
-      border: 1px solid #6366f1;
+      background-color: #6366f1;
+      color: #fff;
       text-align: center;
-      background: #fff;
+      border: none;
     }
     #scanAgainBtn {
       display: none;
@@ -116,18 +116,17 @@
       <input type="number" id="amount" min="1" placeholder="0.00" disabled>
     </div>
     <button id="generateBtn" disabled>Generate Pay Link</button>
-    <a id="shareLink" target="_blank"></a>
+    <a id="payNowBtn"></a>
     <button id="scanAgainBtn">Scan Again</button>
   </div>
 
   <script>
-    // Auto-trigger if shareable link loaded
+    // Trigger UPI intent if params present
     (function() {
-      const params = new URLSearchParams(window.location.search);
-      const pa = params.get('pa');
-      const am = params.get('am');
+      const p = new URLSearchParams(window.location.search);
+      const pa = p.get('pa'), am = p.get('am');
       if (pa && am) {
-        window.location.href = `upi://pay?pa=${encodeURIComponent(pa)}&am=${encodeURIComponent(am)}&cu=INR`;
+        location.href = `upi://pay?pa=${encodeURIComponent(pa)}&am=${encodeURIComponent(am)}&cu=INR`;
       }
     })();
 
@@ -137,7 +136,7 @@
     const upiIdDiv = document.getElementById('upiId');
     const amountInput = document.getElementById('amount');
     const generateBtn = document.getElementById('generateBtn');
-    const shareLink = document.getElementById('shareLink');
+    const payNowBtn = document.getElementById('payNowBtn');
     const scanLine = document.getElementById('scanLine');
     const scanAgainBtn = document.getElementById('scanAgainBtn');
     const ctx = canvas.getContext('2d');
@@ -145,71 +144,59 @@
 
     async function startCamera() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }
-        });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } } });
         video.srcObject = stream;
-        video.setAttribute('playsinline', true);
         video.play();
         scanning = true;
-        videoContainer.style.display = 'block';
-        scanLine.style.display = 'block';
+        videoContainer.style.display = '';
+        scanLine.style.display = '';
         scanAgainBtn.style.display = 'none';
         upiIdDiv.textContent = 'Waiting for QR...';
         amountInput.disabled = true;
         generateBtn.disabled = true;
-        shareLink.style.display = 'none';
+        payNowBtn.style.display = 'none';
         requestAnimationFrame(scanFrame);
       } catch (e) {
-        console.error(e);
-        alert('Error accessing camera. Please allow camera permissions.');
+        alert('Error accessing camera.');
       }
     }
 
     function scanFrame() {
       if (!scanning) return;
       if (video.readyState === video.HAVE_ENOUGH_DATA) {
-        const sw = video.videoWidth >> 1;
-        const sh = video.videoHeight >> 1;
-        canvas.width = sw;
-        canvas.height = sh;
+        const sw = video.videoWidth >> 1, sh = video.videoHeight >> 1;
+        canvas.width = sw; canvas.height = sh;
         ctx.drawImage(video, 0, 0, sw, sh);
-        const imageData = ctx.getImageData(0, 0, sw, sh);
-        const code = jsQR(imageData.data, sw, sh, { inversionAttempts: 'dontInvert' });
+        const code = jsQR(ctx.getImageData(0, 0, sw, sh).data, sw, sh, { inversionAttempts: 'dontInvert' });
         if (code && /upi:\/\/pay|\?pa=/.test(code.data)) {
           const url = new URL(code.data.startsWith('upi://') ? code.data : 'upi://' + code.data);
           const upi = url.searchParams.get('pa');
-          if (upi) {
-            upiIdDiv.textContent = upi;
-            amountInput.disabled = false;
-            generateBtn.disabled = false;
-            scanning = false;
-            scanLine.style.display = 'none';
-            videoContainer.style.display = 'none';
-            scanAgainBtn.style.display = 'block';
-            return;
-          }
+          upiIdDiv.textContent = upi;
+          amountInput.disabled = false;
+          generateBtn.disabled = false;
+          scanning = false;
+          videoContainer.style.display = 'none';
+          scanLine.style.display = 'none';
+          scanAgainBtn.style.display = '';
+          return;
         }
       }
       requestAnimationFrame(scanFrame);
     }
 
     generateBtn.addEventListener('click', () => {
-      const upi = upiIdDiv.textContent.trim();
-      const amt = parseFloat(amountInput.value).toFixed(2);
-      if (!upi || !amt || amt <= 0) return;
-      const baseUrl = `${window.location.origin}${window.location.pathname}`;
-      const url = `${baseUrl}?pa=${encodeURIComponent(upi)}&am=${encodeURIComponent(amt)}`;
-      shareLink.href = url;
-      shareLink.textContent = url;
-      shareLink.style.display = 'block';
+      const upi = upiIdDiv.textContent.trim(), amt = parseFloat(amountInput.value).toFixed(2);
+      if (!upi || !amt) return;
+      const intentUri = `upi://pay?pa=${encodeURIComponent(upi)}&am=${amt}&cu=INR`;
+      payNowBtn.href = intentUri;
+      payNowBtn.textContent = 'Pay Now';
+      payNowBtn.style.display = '';
     });
 
     scanAgainBtn.addEventListener('click', startCamera);
 
-    // initialize on load
+    // initialize
     startCamera();
   </script>
 </body>
 </html>
-
