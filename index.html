@@ -6,21 +6,23 @@
   <title>UPI Scanner & Payment</title>
   <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
   <style>
-    body { margin:0; font-family:Arial,sans-serif; background:#f2f2f2; color:#111; }
-    .container { padding:1rem; max-width:400px; margin:0 auto; }
-    .hidden { display:none !important; }
-    #videoContainer { position:relative; width:100%; padding-top:75%; }
-    #video, #canvas { position:absolute; top:0; left:0; width:100%; height:100%; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.2); }
-    #scanLine { position:absolute; width:100%; height:2px; background:rgba(255,0,0,0.8); animation:scanAnim 2s infinite; }
-    @keyframes scanAnim { 0%{top:0%;}100%{top:100%;} }
-    label { font-weight:bold; margin-top:1rem; display:block; }
-    input, button { width:100%; padding:0.75rem; font-size:1rem; margin-top:0.25rem; border:1px solid #ccc; border-radius:6px; box-sizing:border-box; }
-    button { background:#6366f1; color:#fff; border:none; cursor:pointer; }
-    button:disabled { background:#e5e7eb; color:#888; cursor:not-allowed; }
-    #payButton { text-align:center; text-decoration:none; display:block; margin:2rem auto; }
+    body { margin: 0; font-family: Arial, sans-serif; background: #f2f2f2; color: #111; }
+    .container { padding: 1rem; max-width: 400px; margin: 0 auto; }
+    .hidden { display: none !important; }
+    #videoContainer { position: relative; width: 100%; padding-top: 75%; margin-bottom: 1rem; }
+    #video, #canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+    #scanLine { position: absolute; width: 100%; height: 2px; background: rgba(255,0,0,0.8); animation: scanAnim 2s infinite; }
+    @keyframes scanAnim { 0% { top: 0%; } 100% { top: 100%; } }
+    label { font-weight: bold; margin-top: 1rem; display: block; }
+    input, button { width: 100%; padding: 0.75rem; font-size: 1rem; margin-top: 0.25rem; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+    button { background: #6366f1; color: #fff; border: none; cursor: pointer; }
+    button:disabled { background: #e5e7eb; color: #888; cursor: not-allowed; }
+    #payButtons a { display: block; margin: 0.5rem 0; text-decoration: none; }
+    #payButtons button { width: 100%; }
   </style>
 </head>
 <body>
+  <!-- Scanner View -->
   <div id="scannerApp" class="container">
     <h2>UPI QR Scanner & Share</h2>
     <div id="videoContainer">
@@ -35,25 +37,35 @@
     <button id="scanAgainBtn" class="hidden">Scan Again</button>
   </div>
 
+  <!-- Payment View -->
   <div id="payApp" class="container hidden">
-    <h2>UPI Payment</h2>
-    <a id="payButton" href="#" target="_blank"><button>Pay Now</button></a>
+    <h2>Choose UPI App</h2>
+    <div id="payButtons">
+      <a id="gpayBtn" href="#" target="_blank"><button>Pay with GPay</button></a>
+      <a id="phonepeBtn" href="#" target="_blank"><button>Pay with PhonePe</button></a>
+    </div>
   </div>
 
   <script>
     const params = new URLSearchParams(window.location.search);
-    const pa = params.get('pa'); const am = params.get('am');
+    const pa = params.get('pa'), am = params.get('am');
     const scannerApp = document.getElementById('scannerApp');
     const payApp = document.getElementById('payApp');
 
     if (pa && am) {
-      // Show payment page
+      // Switch to payment view
       scannerApp.classList.add('hidden');
       payApp.classList.remove('hidden');
-      const intent = `upi://pay?pa=${encodeURIComponent(pa)}&am=${encodeURIComponent(am)}&cu=INR`;
-      document.getElementById('payButton').href = intent;
+      // Base UPI intent
+      const baseIntent = `upi://pay?pa=${encodeURIComponent(pa)}&am=${encodeURIComponent(am)}&cu=INR`;
+      // Google Pay specific intent
+      const gpayIntent = `intent://pay?pa=${encodeURIComponent(pa)}&am=${encodeURIComponent(am)}&cu=INR#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end`;
+      // PhonePe specific intent
+      const phonepeIntent = `intent://pay?pa=${encodeURIComponent(pa)}&am=${encodeURIComponent(am)}&cu=INR#Intent;scheme=upi;package=com.phonepe.app;end`;
+      document.getElementById('gpayBtn').href = gpayIntent;
+      document.getElementById('phonepeBtn').href = phonepeIntent;
     } else {
-      // Show scanner page
+      // Scanner logic
       let scanning = false;
       const video = document.getElementById('video');
       const canvas = document.createElement('canvas');
@@ -63,10 +75,10 @@
       const amountInput = document.getElementById('amount');
       const shareBtn = document.getElementById('shareBtn');
       const scanAgainBtn = document.getElementById('scanAgainBtn');
-      
+
       async function startCamera() {
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode:'environment', width:{ideal:640}, height:{ideal:480} } });
+          const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:640},height:{ideal:480}}});
           video.srcObject = stream;
           await video.play();
           scanning = true;
@@ -86,7 +98,7 @@
           canvas.width = video.videoWidth>>1;
           canvas.height = video.videoHeight>>1;
           ctx.drawImage(video,0,0,canvas.width,canvas.height);
-          const code = jsQR(ctx.getImageData(0,0,canvas.width,canvas.height).data, canvas.width,canvas.height,{inversionAttempts:'dontInvert'});
+          const code = jsQR(ctx.getImageData(0,0,canvas.width,canvas.height).data,canvas.width,canvas.height,{inversionAttempts:'dontInvert'});
           if (code && /upi:\/\/pay|\?pa=/.test(code.data)) {
             const url = new URL(code.data.startsWith('upi://')?code.data:'upi://'+code.data);
             const upi = url.searchParams.get('pa');
@@ -107,8 +119,7 @@
         const amt = parseFloat(amountInput.value).toFixed(2);
         if (!upiParam || !amt) return;
         const link = `${location.origin}${location.pathname}?pa=${upiParam}&am=${amt}`;
-        const wa = `https://wa.me/?text=${encodeURIComponent(link)}`;
-        window.open(wa,'_blank');
+        window.open(`https://wa.me/?text=${encodeURIComponent(link)}`,'_blank');
       });
 
       scanAgainBtn.addEventListener('click', startCamera);
