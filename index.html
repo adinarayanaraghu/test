@@ -1,34 +1,33 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>UPI Pay Link Generator</title>
   <style>
     body {
       font-family: sans-serif;
       display: flex;
-      justify-content: center;
       align-items: center;
-      min-height: 100vh;
+      justify-content: center;
+      height: 100vh;
       margin: 0;
-      background: #f5f5f5;
+      background: #f0f0f0;
     }
-    .container {
+    .card {
       background: #fff;
       padding: 2rem;
       border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      max-width: 320px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
       width: 100%;
+      max-width: 360px;
     }
-    label {
+    .card label {
+      font-weight: bold;
       display: block;
       margin-bottom: 0.25rem;
-      font-weight: bold;
     }
-    input {
+    .card input {
       width: 100%;
       padding: 0.5rem;
       margin-bottom: 1rem;
@@ -36,65 +35,57 @@
       border-radius: 4px;
       font-size: 1rem;
     }
-    button, .pay-now {
+    .card button {
       width: 100%;
       padding: 0.75rem;
       font-size: 1rem;
+      background: #007E33;
+      color: #fff;
       border: none;
       border-radius: 4px;
       cursor: pointer;
-      text-align: center;
-      background: #4CAF50;
-      color: #fff;
-    }
-    .pay-now {
-      display: none;
-      text-decoration: none;
-      line-height: 1.2;
     }
   </style>
 </head>
 <body>
 
-  <div class="container">
+  <div class="card">
     <label for="upiId">UPI ID</label>
-    <input type="text" id="upiId" placeholder="e.g. yourname@bank">
+    <input id="upiId" type="text" placeholder="e.g. yourname@bank">
 
     <label for="amount">Amount (₹)</label>
-    <input type="number" id="amount" placeholder="e.g. 150.00" min="0" step="0.01">
+    <input id="amount" type="number" placeholder="e.g. 150.00" min="0" step="0.01">
 
-    <button id="generate">Generate Pay Link</button>
-
-    <!-- dynamically shown -->
-    <a id="payNow" class="pay-now">Pay Now</a>
+    <button id="payNowBtn">Pay Now</button>
   </div>
 
   <script>
-    document.getElementById('generate').addEventListener('click', () => {
-      const upiId = document.getElementById('upiId').value.trim();
+    document.getElementById('payNowBtn').addEventListener('click', () => {
+      const upiId  = document.getElementById('upiId').value.trim();
       const amount = document.getElementById('amount').value.trim();
 
       if (!upiId || !amount) {
-        alert('Please enter both UPI ID and amount.');
-        return;
+        return alert('Please enter both UPI ID and amount.');
       }
 
-      // Build the standard UPI deep link
+      // Standard UPI URI (will trigger chooser on iOS and many Android browsers)
       const upiUri = 
         'upi://pay?pa=' + encodeURIComponent(upiId) +
         '&am=' + encodeURIComponent(amount) +
         '&cu=INR';
 
-      // For Android fallback to intent URI (optional but improves Android compatibility)
+      // Android Intent URI WITHOUT a specific package,
+      // so the system shows *all* UPI apps that handle "upi://" links
       const intentUri = 
         'intent://pay?pa=' + encodeURIComponent(upiId) +
         '&am=' + encodeURIComponent(amount) +
-        '&cu=INR#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end';
+        '&cu=INR' +
+        '#Intent;scheme=upi;action=android.intent.action.VIEW;end';
 
-      const payNow = document.getElementById('payNow');
-      // Use intent URI on Android; browsers will fallback to upi:// on iOS or other platforms
-      payNow.href = navigator.userAgent.match(/Android/i) ? intentUri : upiUri;
-      payNow.style.display = 'block';
+      // On Android, use the Intent URI to force a chooser of UPI apps.
+      // On iOS (or non-Android), fallback to the generic UPI URI.
+      const isAndroid = /Android/i.test(navigator.userAgent);
+      window.location.href = isAndroid ? intentUri : upiUri;
     });
   </script>
 
